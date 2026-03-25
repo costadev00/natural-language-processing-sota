@@ -54,7 +54,7 @@ GloVe proposes an alternative method for learning word embeddings based on globa
 This paper critiques the idea that embedding quality can be adequately measured using only similarity scores or geometric distances in vector space. It argues that evaluating embeddings is a more complex problem, since different tasks, datasets, and benchmarks may favor different representations. In this sense, embedding evaluation is itself an important research topic.
 ```
 ---
-
+```
 ## Implementations
 This repository currently contains the following notebook implementations:
 
