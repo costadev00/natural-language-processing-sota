@@ -25,7 +25,7 @@ natural-language-processing-sota/
     ├── 03_distributed_representations_of_words_and_phrases_and_their_compositionality.pdf
     ├── 04_glove_global_vectors_for_word_representation.pdf
     └── 05_evaluation_methods_for_unsupervised_word_embeddings.pdf
-
+```
 ## Papers
 
 ### 1. Human Language Understanding and Reasoning
