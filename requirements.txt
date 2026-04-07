@@ -1,0 +1,19 @@
+# Generated from imports used across the Python script and notebooks in this repository.
+# Some notebooks also download NLTK corpora/datasets at runtime.
+# For full notebook compatibility, prefer Python 3.13.
+# `gensim` currently has PyPI wheels through Python 3.13; on Python 3.14 pip
+# may try to compile it locally and fail during the C extension build.
+
+datasets
+matplotlib
+nltk
+numpy
+pandas
+requests
+scikit-learn
+scipy
+seqeval
+sklearn-crfsuite
+torch
+tqdm
+gensim>=4.4,<4.5; python_version < "3.14"
