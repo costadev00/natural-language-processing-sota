@@ -16,4 +16,5 @@ seqeval
 sklearn-crfsuite
 torch
 tqdm
+tokenizers
 gensim>=4.4,<4.5; python_version < "3.14"
