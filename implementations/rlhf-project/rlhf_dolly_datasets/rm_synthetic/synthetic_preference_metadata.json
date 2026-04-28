@@ -1,0 +1,28 @@
+{
+  "batch_size": 32,
+  "chosen_source": "databricks_dolly_reference_response",
+  "dataset_type": "synthetic_reward_model_preferences",
+  "max_length": 1024,
+  "max_new_tokens": 160,
+  "rejected_model": "sft_gpt2/model",
+  "rejected_source": "sampled_sft_gpt2_generation",
+  "rm_schema_dir": "rlhf_dolly_datasets/rm_schema",
+  "seed": 42,
+  "stats": {
+    "test": {
+      "fallback_rejections": 11,
+      "rows": 1499
+    },
+    "train": {
+      "fallback_rejections": 119,
+      "rows": 12010
+    },
+    "validation": {
+      "fallback_rejections": 14,
+      "rows": 1502
+    }
+  },
+  "temperature": 0.9,
+  "top_p": 0.95,
+  "warning": "This is a proxy RM dataset, not human preference data."
+}

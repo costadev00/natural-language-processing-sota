@@ -1,0 +1,7 @@
+datasets>=2.19.0
+pyarrow>=15.0.0
+torch>=2.5.0
+transformers>=4.46.0
+accelerate>=0.34.0
+evaluate>=0.4.2
+safetensors>=0.4.5

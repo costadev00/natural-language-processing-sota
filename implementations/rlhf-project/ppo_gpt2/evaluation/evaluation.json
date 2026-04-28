@@ -1,0 +1,92 @@
+{
+  "generation_sample_size": 16,
+  "ppo": {
+    "loss": 2.6985251903533936,
+    "perplexity": 14.857803127214432,
+    "samples": 1499
+  },
+  "ppo_dataset_dir": "rlhf_dolly_datasets/ppo",
+  "ppo_generation": {
+    "approx_kl_vs_sft": -0.0010596043271489646,
+    "copy_rate_mean": 0.6191852325405653,
+    "response_words_mean": 41.0,
+    "reward_mean": 1.2411023965105414,
+    "rouge_l_f1_mean": 0.24737273469026466
+  },
+  "ppo_model": "ppo_gpt2/model",
+  "ppo_split_rows": {
+    "test": 1499,
+    "train": 12010,
+    "validation": 1502
+  },
+  "ppo_vs_sft_reward_win_rate": 0.5,
+  "reward_model": "reward_gpt2/model",
+  "sft": {
+    "loss": 2.6771903038024902,
+    "perplexity": 14.544171131053782,
+    "samples": 1499
+  },
+  "sft_dataset_dir": "rlhf_dolly_datasets/sft",
+  "sft_generation": {
+    "copy_rate_mean": 0.612971510661039,
+    "response_words_mean": 43.625,
+    "reward_mean": 1.1067831618711352,
+    "rouge_l_f1_mean": 0.2469529683496908
+  },
+  "sft_model": "sft_gpt2/model",
+  "sft_split_rows": {
+    "test": 1499,
+    "train": 12010,
+    "validation": 1502
+  },
+  "training_config": {
+    "accelerator_processes": 4,
+    "clip_range": 0.2,
+    "cuda_device_count": 4,
+    "dataset_dir": "rlhf_dolly_datasets/ppo",
+    "kl_coef": 0.02,
+    "learning_rate": 1e-06,
+    "max_grad_norm": 1.0,
+    "max_new_tokens": 96,
+    "max_prompt_length": 768,
+    "num_ppo_epochs": 1,
+    "output_dir": "ppo_gpt2",
+    "per_device_batch_size": 4,
+    "policy_model": "sft_gpt2/model",
+    "ppo_update_epochs": 1,
+    "preference_dataset_warning": "Reward model was trained on synthetic proxy preferences.",
+    "reward_model": "reward_gpt2/model",
+    "seed": 42,
+    "temperature": 1.0,
+    "top_p": 0.95,
+    "total_steps": 751,
+    "value_coef": 0.01,
+    "warmup_ratio": 0.03
+  },
+  "training_metrics": {
+    "clip_fraction_last": 0.748967170715332,
+    "clip_fraction_mean": 0.8234221251128357,
+    "distributed_processes": 4,
+    "kl_abs_mean_last": 2.8682937622070312,
+    "kl_abs_mean_mean": 1.2718390213963036,
+    "kl_mean_last": -2.7096872329711914,
+    "kl_mean_mean": -1.1715219532128438,
+    "loss_last": 163824880.0,
+    "loss_mean": 3416139.8406528006,
+    "non_score_reward_mean_last": 0.05419374629855156,
+    "non_score_reward_mean_mean": 0.0234304385300303,
+    "policy_loss_last": 163824880.0,
+    "policy_loss_mean": 3416139.7659752104,
+    "ratio_last": 281633728.0,
+    "ratio_mean": 96433026.19645709,
+    "response_tokens_mean_last": 43.4375,
+    "response_tokens_mean_mean": 53.75299600532623,
+    "reward_mean_last": 2.4022202491760254,
+    "reward_mean_mean": 2.310646674286986,
+    "steps": 751,
+    "train_samples": 12010,
+    "value_loss_last": 14.556097984313965,
+    "value_loss_mean": 7.574573222235262
+  },
+  "warning": "Reward model is synthetic/proxy, not human preference labels."
+}

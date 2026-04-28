@@ -1,0 +1,25 @@
+{
+  "base": {
+    "loss": 2.797891855239868,
+    "perplexity": 16.41001559176983,
+    "samples": 1482
+  },
+  "base_generation": {
+    "copy_rate_mean": 0.5393247206040223,
+    "response_words_mean": 74.4375,
+    "rouge_l_f1_mean": 0.17689942514725357
+  },
+  "base_model": "gpt2",
+  "dataset_dir": "rlhf_dolly_datasets/sft",
+  "sft": {
+    "loss": 2.454982280731201,
+    "perplexity": 11.646227184421187,
+    "samples": 1482
+  },
+  "sft_generation": {
+    "copy_rate_mean": 0.612971510661039,
+    "response_words_mean": 43.625,
+    "rouge_l_f1_mean": 0.2469529683496908
+  },
+  "sft_model": "sft_gpt2/model"
+}

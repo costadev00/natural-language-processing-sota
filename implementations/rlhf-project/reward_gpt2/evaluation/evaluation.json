@@ -1,0 +1,112 @@
+{
+  "by_category": {
+    "brainstorming": {
+      "chosen_reward_std": 0.5935040712356567,
+      "mean_chosen_reward": 2.9539522887630896,
+      "mean_margin": 0.9164972870864652,
+      "mean_rejected_reward": 2.0374550016766246,
+      "median_margin": 0.8101130723953247,
+      "pair_loss": 0.415154627259736,
+      "pairwise_accuracy": 0.8920454545454546,
+      "rejected_reward_std": 0.8884016871452332,
+      "samples": 176
+    },
+    "classification": {
+      "chosen_reward_std": 0.4889097809791565,
+      "mean_chosen_reward": 2.520912034410826,
+      "mean_margin": 0.27701727636683154,
+      "mean_rejected_reward": 2.2438947580439943,
+      "median_margin": 0.18015313148498535,
+      "pair_loss": 0.6077498509220673,
+      "pairwise_accuracy": 0.647887323943662,
+      "rejected_reward_std": 0.5558607578277588,
+      "samples": 213
+    },
+    "closed_qa": {
+      "chosen_reward_std": 0.6855051517486572,
+      "mean_chosen_reward": 2.657340808692625,
+      "mean_margin": 0.17378430472592177,
+      "mean_rejected_reward": 2.483556503966703,
+      "median_margin": 0.11258339881896973,
+      "pair_loss": 0.6939085015216789,
+      "pairwise_accuracy": 0.5875706214689266,
+      "rejected_reward_std": 0.7922186255455017,
+      "samples": 177
+    },
+    "creative_writing": {
+      "chosen_reward_std": 0.7047178745269775,
+      "mean_chosen_reward": 2.997001055260779,
+      "mean_margin": 0.7615786782452758,
+      "mean_rejected_reward": 2.2354223770155035,
+      "median_margin": 0.7274360656738281,
+      "pair_loss": 0.49539204189737496,
+      "pairwise_accuracy": 0.8028169014084507,
+      "rejected_reward_std": 0.9082674980163574,
+      "samples": 71
+    },
+    "general_qa": {
+      "chosen_reward_std": 0.6307309865951538,
+      "mean_chosen_reward": 2.7745419147352104,
+      "mean_margin": 0.6560221178006364,
+      "mean_rejected_reward": 2.1185197969345744,
+      "median_margin": 0.5783798694610596,
+      "pair_loss": 0.4862832318540646,
+      "pairwise_accuracy": 0.7808219178082192,
+      "rejected_reward_std": 0.779009997844696,
+      "samples": 219
+    },
+    "information_extraction": {
+      "chosen_reward_std": 0.6366622447967529,
+      "mean_chosen_reward": 2.797843767007192,
+      "mean_margin": 0.6559519752363364,
+      "mean_rejected_reward": 2.1418917917708558,
+      "median_margin": 0.4793276786804199,
+      "pair_loss": 0.5511707850638777,
+      "pairwise_accuracy": 0.76,
+      "rejected_reward_std": 1.1289361715316772,
+      "samples": 150
+    },
+    "open_qa": {
+      "chosen_reward_std": 0.6676947474479675,
+      "mean_chosen_reward": 2.4912329816563243,
+      "mean_margin": 0.4839804048206717,
+      "mean_rejected_reward": 2.007252576835653,
+      "median_margin": 0.41523051261901855,
+      "pair_loss": 0.5518587711416584,
+      "pairwise_accuracy": 0.7058823529411765,
+      "rejected_reward_std": 0.706538736820221,
+      "samples": 374
+    },
+    "summarization": {
+      "chosen_reward_std": 0.7660860419273376,
+      "mean_chosen_reward": 2.7506282559963835,
+      "mean_margin": 0.46954525293422344,
+      "mean_rejected_reward": 2.28108300306216,
+      "median_margin": 0.3948855400085449,
+      "pair_loss": 0.6138628535246586,
+      "pairwise_accuracy": 0.7058823529411765,
+      "rejected_reward_std": 1.0798190832138062,
+      "samples": 119
+    }
+  },
+  "correlations": {
+    "margin_vs_chosen_copy_rate": -0.18617535747903335,
+    "margin_vs_chosen_words": 0.08667014139574702,
+    "margin_vs_rejected_copy_rate": -0.10998587820143715,
+    "margin_vs_rejected_words": 0.3210507930075785
+  },
+  "dataset_dir": "rlhf_dolly_datasets/rm_synthetic",
+  "reward_model": "reward_gpt2/model",
+  "summary": {
+    "chosen_reward_std": 0.663332998752594,
+    "mean_chosen_reward": 2.6860129460940922,
+    "mean_margin": 0.5230729199940957,
+    "mean_rejected_reward": 2.1629400260999967,
+    "median_margin": 0.41358423233032227,
+    "pair_loss": 0.5531214662442969,
+    "pairwise_accuracy": 0.7264843228819213,
+    "rejected_reward_std": 0.8400703072547913,
+    "samples": 1499
+  },
+  "warning": "Synthetic proxy preferences, not human preference labels."
+}

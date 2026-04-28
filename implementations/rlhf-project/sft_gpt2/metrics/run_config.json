@@ -1,0 +1,21 @@
+{
+  "best_metric": 2.470390796661377,
+  "best_model_checkpoint": "sft_gpt2/checkpoints/checkpoint-282",
+  "bf16": true,
+  "cuda_device_count": 4,
+  "dataset_dir": "rlhf_dolly_datasets/sft",
+  "distributed_rank": 0,
+  "fp16": false,
+  "gradient_accumulation_steps": 4,
+  "learning_rate": 5e-05,
+  "local_rank": 0,
+  "max_length": 1024,
+  "model_name": "gpt2",
+  "num_train_epochs": 3.0,
+  "output_dir": "sft_gpt2",
+  "per_device_eval_batch_size": 8,
+  "per_device_train_batch_size": 8,
+  "seed": 42,
+  "warmup_ratio": 0.03,
+  "weight_decay": 0.01
+}
