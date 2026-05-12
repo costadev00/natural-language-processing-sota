@@ -1,0 +1,13 @@
+title: "Transformers"
+status: "didactic-complete"
+papers:
+  - "Attention Is All You Need"
+implementations:
+  - "notebooks/annotated-transformer-colab-illustrated.ipynb"
+datasets:
+  - "Copy task sintetica"
+results:
+  - "Implementacao minima do Transformer com atencao multi-head e mascara causal"
+key_findings:
+  - "Attention permite composicao contextual sem recorrencia"
+  - "Mascara causal e positional encoding sao essenciais para a semantica da sequencia"

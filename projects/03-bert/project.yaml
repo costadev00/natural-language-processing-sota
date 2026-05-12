@@ -1,0 +1,17 @@
+title: "BERT"
+status: "in-progress"
+papers:
+  - "BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding"
+  - "Attention Is All You Need"
+implementations:
+  - "notebooks/bert-sentiment-analysis-wikipedia.ipynb"
+  - "scripts/bert-didatico.py"
+datasets:
+  - "wikimedia/wikipedia 20231101.pt"
+  - "jvanz/portuguese_sentiment_analysis"
+results:
+  - "Demonstração compacta de MLM e NSP"
+  - "Notebook com pre-treinamento reduzido e fine-tuning downstream"
+key_findings:
+  - "BERT depende de pre-treinamento bidirecional com objetivos auto-supervisionados"
+  - "Escala de corpus e hardware e parte central do resultado final"

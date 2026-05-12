@@ -1,0 +1,31 @@
+title: "RLHF with GPT-2 and Dolly"
+status: "complete-experiment"
+papers:
+  - "Training Language Models to Follow Instructions with Human Feedback"
+  - "Language Models are Unsupervised Multitask Learners"
+  - "Measuring Massive Multitask Language Understanding"
+  - "Proximal Policy Optimization Algorithms"
+implementations:
+  - "scripts/build-dolly-rlhf-datasets.py"
+  - "scripts/train-gpt2-sft.py"
+  - "scripts/evaluate-gpt2-sft.py"
+  - "scripts/build-synthetic-rm-preferences.py"
+  - "scripts/train-gpt2-reward-model.py"
+  - "scripts/evaluate-gpt2-reward-model.py"
+  - "scripts/train-gpt2-ppo.py"
+  - "scripts/evaluate-gpt2-ppo.py"
+  - "scripts/evaluate-gpt2-mmlu.py"
+datasets:
+  - "databricks/databricks-dolly-15k"
+  - "costadev00/dolly-15k-rlhf-instructgpt-format"
+  - "cais/mmlu"
+results:
+  - "results/sft/evaluation.json"
+  - "results/reward-model/evaluation.json"
+  - "results/ppo/evaluation.json"
+  - "results/mmlu/evaluation.json"
+key_findings:
+  - "SFT melhora perplexidade e aderencia ao formato Dolly"
+  - "Reward model aprende um sinal proxy Dolly-vs-SFT, nao preferencia humana"
+  - "PPO aumenta reward amostrado, mas apresenta instabilidade e nao melhora perplexidade"
+  - "SFT em Dolly nao transfere para melhora clara no MMLU"

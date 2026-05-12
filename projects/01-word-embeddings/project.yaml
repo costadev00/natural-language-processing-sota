@@ -1,0 +1,22 @@
+title: "Word Embeddings"
+status: "didactic-complete"
+papers:
+  - "Efficient Estimation of Word Representations in Vector Space"
+  - "Distributed Representations of Words and Phrases and their Compositionality"
+  - "GloVe: Global Vectors for Word Representation"
+  - "Evaluation Methods for Unsupervised Word Embeddings"
+implementations:
+  - "notebooks/cbow-pytorch-didatico.ipynb"
+  - "notebooks/skipgram-pytorch-didatico.ipynb"
+  - "notebooks/word2vec-negative-sampling-pytorch.ipynb"
+  - "notebooks/glove-pytorch-didatico.ipynb"
+  - "notebooks/embedding-evaluation-gensim-cornell.ipynb"
+datasets:
+  - "Corpus didaticos internos nos notebooks"
+  - "Cornell Eval e fallbacks baixados em tempo de execucao"
+results:
+  - "Implementacoes pedagogicas de CBOW, Skip-gram, negative sampling e GloVe"
+  - "Notebook de avaliacao intrinseca com Gensim"
+key_findings:
+  - "Objetivos locais e globais produzem intuicoes diferentes sobre o espaco vetorial"
+  - "Metricas intrinsecas precisam ser lidas como diagnosticos complementares"

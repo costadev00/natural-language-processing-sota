@@ -1,3 +1,32 @@
+# Project artifact policy
+.env
+**/.env
+**/.venv/
+**/__pycache__/
+**/.cache/
+**/.ipynb_checkpoints/
+**/hf_upload/
+**/logs/
+**/tmp_*/
+
+# ML datasets, checkpoints, and generated model artifacts stay outside Git.
+**/rlhf_dolly_datasets/
+projects/04-rlhf/sft_gpt2/
+projects/04-rlhf/reward_gpt2/
+projects/04-rlhf/ppo_gpt2/
+**/checkpoints/
+**/model/
+**/*.arrow
+**/*.safetensors
+**/optimizer.pt
+**/value_head.pt
+
+# Large or generated evaluation dumps. Keep summarized metrics/reports instead.
+**/predictions_*.jsonl
+**/generations.jsonl
+**/examples.jsonl
+**/rollout_metrics.jsonl
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

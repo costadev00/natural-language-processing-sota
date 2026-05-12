@@ -1,0 +1,359 @@
+\documentclass[a4paper,12pt]{article}
+\usepackage[utf8]{inputenc}
+\usepackage{graphicx} % Required for inserting images
+\usepackage{hyperref}
+\usepackage{amsmath}
+\usepackage{amssymb}
+
+\usepackage{dentitle}
+\usepackage{personal}
+
+\begin{document}
+
+\title{Fine-Tuning e Reward Models}
+\author{Matheus Costa Monteiro}
+\date{28 de abril de 2026}
+\makedendentitle{PCS5029 - PLN com Redes Neurais Artificiais}{Relatório da Aula 9}{}
+
+\section{Objetivo}
+
+Este relatório documenta a entrega de um pipeline local de RLHF inspirado no formato textual do InstructGPT \cite{ouyang2022training}. O trabalho parte do dataset \texttt{databricks/databricks-dolly-15k}, introduzido pela Databricks como um conjunto aberto de pares \textit{prompt/response} gerados por humanos para instruction tuning \cite{databricks2023dolly,databricksDolly15k}, e constrói quatro etapas: preparação dos datasets de SFT, RM e PPO; fine-tuning supervisionado do GPT-2; treinamento de um reward model baseado em GPT-2; e ajuste final do modelo SFT com PPO usando o reward model treinado.
+
+O foco da entrega foi manter o formato de prompt natural, sem chat template e sem marcadores artificiais como \texttt{\#\#\#}. Quando existe contexto, o prompt foi renderizado como:
+
+\begin{verbatim}
+{instruction}
+
+Context:
+{context}
+\end{verbatim}
+
+Quando não existe contexto, o prompt contém apenas a instrução original. Essa decisão segue o espírito do InstructGPT: entradas textuais diretas, demonstrações humanas para SFT, preferências para RM e prompts sem resposta para PPO \cite{ouyang2022training}.
+
+\section{Artefatos Entregues}
+
+Todos os artefatos foram organizados dentro da trilha \texttt{projects/04-rlhf/}. A implementação utilizou principalmente as bibliotecas Hugging Face \texttt{datasets} e \texttt{transformers}, que fornecem as abstrações de \texttt{DatasetDict}, tokenização, carregamento de modelos e treinamento usadas neste trabalho \cite{lhoest2021datasets,wolf2020transformers}. Os principais scripts gerados foram:
+
+\begin{itemize}
+    \item \texttt{build\_dolly\_rlhf\_datasets.py}: constrói os datasets SFT, RM schema e PPO.
+    \item \texttt{train\_gpt2\_sft.py}: treina o GPT-2 com supervised fine-tuning.
+    \item \texttt{evaluate\_gpt2\_sft.py}: avalia GPT-2 base contra GPT-2 SFT.
+    \item \texttt{build\_synthetic\_rm\_preferences.py}: cria pares sintéticos para treinamento do reward model.
+    \item \texttt{train\_gpt2\_reward\_model.py}: treina o reward model com loss Bradley-Terry.
+    \item \texttt{evaluate\_gpt2\_reward\_model.py}: avalia o reward model no conjunto de teste.
+    \item \texttt{train\_gpt2\_ppo.py}: aplica PPO no modelo SFT usando o reward model.
+    \item \texttt{evaluate\_gpt2\_ppo.py}: compara o modelo SFT e o modelo PPO.
+\end{itemize}
+
+Os relatórios e métricas foram salvos localmente em:
+
+\begin{itemize}
+    \item \texttt{sft\_gpt2/evaluation/analysis\_report.md}
+    \item \texttt{reward\_gpt2/evaluation/analysis\_report.md}
+    \item \texttt{ppo\_gpt2/evaluation/analysis\_report.md}
+\end{itemize}
+
+\section{Tarefa 1: Construção dos Datasets RLHF}
+
+A primeira tarefa consistiu em transformar o Dolly 15k em artefatos compatíveis com as etapas clássicas de RLHF. O dataset original contém 15011 exemplos e é distribuído no Hugging Face Hub sob licença CC BY-SA 3.0 \cite{databricksDolly15k}. Foram criados quatro \texttt{DatasetDicts} locais, todos com splits \texttt{train}, \texttt{validation} e \texttt{test}, estratificados por categoria com seed 42.
+
+\begin{table}[h]
+\centering
+\begin{tabular}{|l|r|r|r|}
+\hline
+\textbf{Dataset} & \textbf{Train} & \textbf{Validation} & \textbf{Test} \\
+\hline
+SFT & 12010 & 1502 & 1499 \\
+RM schema & 12010 & 1502 & 1499 \\
+RM sintético & 12010 & 1502 & 1499 \\
+PPO & 12010 & 1502 & 1499 \\
+\hline
+\end{tabular}
+\caption{Tamanho dos splits usados no pipeline RLHF.}
+\end{table}
+
+O dataset de SFT contém \texttt{prompt}, \texttt{completion}, \texttt{text}, \texttt{instruction}, \texttt{context}, \texttt{category}, \texttt{source\_id} e \texttt{has\_context}. O campo \texttt{text} concatena o prompt e a resposta Dolly, enquanto a loss de treinamento foi aplicada apenas aos tokens da resposta.
+
+O dataset \texttt{rm\_schema} foi mantido honesto para rotulagem futura: \texttt{chosen} e \texttt{rejected} ficam vazios e \texttt{ready\_for\_rm=false}. Para permitir a etapa de reward modeling sem inventar preferências humanas, foi criado separadamente o \texttt{rm\_synthetic}, no qual a resposta Dolly foi tratada como \texttt{chosen} e uma resposta gerada pelo modelo SFT foi tratada como \texttt{rejected}. Essa preferência é, portanto, uma preferência proxy, não uma anotação humana real.
+
+O dataset PPO mantém apenas os prompts e metadados, removendo respostas. Esse formato é apropriado para rollouts, pois o modelo gera continuações que são avaliadas posteriormente pelo reward model.
+
+Os datasets foram publicados no Hugging Face Hub como:
+
+\begin{center}
+\url{https://huggingface.co/datasets/costadev00/dolly-15k-rlhf-instructgpt-format}
+\end{center}
+
+\section{Tarefa 2: Supervised Fine-Tuning do GPT-2}
+
+Na segunda etapa, o modelo \texttt{gpt2} base foi ajustado com SFT usando o dataset \texttt{rlhf\_dolly\_datasets/sft}. O GPT-2 é um modelo Transformer decoder-only treinado originalmente por modelagem autoregressiva de linguagem \cite{radford2019language}. O treinamento utilizou três épocas, avaliação por época, seleção do melhor checkpoint por \texttt{eval\_loss}, \texttt{max\_length=1024}, batch por GPU 8, gradient accumulation 4, learning rate $5 \times 10^{-5}$, warmup de 3\%, weight decay 0.01 e treinamento distribuído em quatro GPUs.
+
+A tokenização concatenou \texttt{prompt + "\textbackslash n\textbackslash n" + completion + eos}. Os labels do prompt foram mascarados com -100, fazendo com que a loss supervisionada fosse calculada apenas sobre a resposta. O modelo final foi salvo em \texttt{sft\_gpt2/model}.
+
+\begin{table}[h]
+\centering
+\begin{tabular}{|l|r|r|}
+\hline
+\textbf{Modelo} & \textbf{Loss teste} & \textbf{Perplexidade teste} \\
+\hline
+GPT-2 base & 2.7979 & 16.41 \\
+GPT-2 SFT & 2.4550 & 11.65 \\
+\hline
+\end{tabular}
+\caption{Comparação de loss e perplexidade entre GPT-2 base e GPT-2 SFT.}
+\end{table}
+
+Além da queda de perplexidade, a avaliação qualitativa mostrou que o SFT passou a seguir melhor o formato de resposta esperado. Métricas leves de geração também melhoraram: o ROUGE-L F1 médio subiu de 0.1769 para 0.2470. A diferença aparece principalmente na mudança de comportamento: antes do ajuste, o GPT-2 frequentemente continuava o texto com frases genéricas ou repetitivas; depois do SFT, ele passou a produzir respostas no domínio da instrução.
+
+Um exemplo do conjunto de teste ilustra essa mudança:
+
+\begin{quote}
+\small
+\textbf{Prompt:} What are some facts about Aydın İlter?
+
+\textbf{Contexto resumido:} Aydın İlter was a Turkish general. He was General Commander of the Gendarmerie of Turkey (1993--1995) and previously served in the Special Warfare Department from 1963 to 1983, including as head of the Department from 1980 to 1983.
+
+\textbf{Referência Dolly:} Aydın İlter was born on July 1st, 1930. He was a Turkish General Commander of the Gendarmerie of Turkey from 1993 to 1995. Prior to serving as General Commander he served in the Special Warfare Department from 1963 to 1983. He was the head of that department from 1980 to 1983. Aydın İlter died on April 21st, 2022 at the age of 91.
+
+\textbf{GPT-2 base:} ``He was a member of the Turkish Army from 1963 to 1983. He was a member of the Turkish Army from 1963 to 1983...''
+
+\textbf{GPT-2 SFT:} ``General Commander of the Gendarmerie of Turkey (1993--1995) and previously served in the Special Warfare Department from 1963 to 1983, including as head of the Department from 1980 to 1983.''
+\end{quote}
+
+Nesse caso, a melhora é mais clara: o modelo base repete uma frase parcial e perde a estrutura da pergunta, enquanto o modelo SFT produz uma resposta factual, curta e alinhada ao contexto. Ele ainda não recupera todos os detalhes da referência, como nascimento, morte e idade, mas identifica corretamente o cargo principal, o período de atuação e a passagem pelo Special Warfare Department. Nesse exemplo, o ROUGE-L F1 subiu de 0.2839 no GPT-2 base para 0.5306 no GPT-2 SFT. Portanto, o ganho observado não significa domínio completo da tarefa, mas sim uma melhora concreta em aderência à instrução, seleção de informação e formato de resposta.
+
+\subsection*{Exemplos adicionais do SFT}
+
+\begin{quote}
+\small
+\textbf{Prompt:} From the passage provided, extract the date of birth of Gandhi.
+
+\textbf{Referência Dolly:} Gandhi was born on 2 October 1869.
+
+\textbf{GPT-2 base:} ``The family was settled in the village of Kannada in the late 19th century. The family was settled...''
+
+\textbf{GPT-2 SFT:} ``Mohandas Karamchand Gandhi was born on 2 October 1869 into a Gujarati Hindu Modh Bania family in Porbandar...''
+\end{quote}
+
+Nesse exemplo, o modelo SFT encontra a data correta no contexto, embora ainda copie mais texto do que o necessário. O modelo base, por outro lado, gera uma continuação irrelevante e repetitiva.
+
+\begin{quote}
+\small
+\textbf{Prompt:} What is a chemical structure?
+
+\textbf{Referência Dolly:} A chemical structure determination includes a chemist's specifying the molecular geometry and, when feasible and necessary, the electronic structure of the target molecule or other solid.
+
+\textbf{GPT-2 base:} ``What is a chemical structure? Context: A chemical structure determination includes...''
+
+\textbf{GPT-2 SFT:} ``A chemical structure determination includes a chemist's specifying the molecular geometry and, when feasible and necessary, the electronic structure of the target molecule or other solid...''
+\end{quote}
+
+Aqui o SFT passa a iniciar diretamente pela resposta, enquanto o modelo base tende a repetir o prompt e o contexto. O comportamento ainda é extrativo, mas a aderência ao formato instruction-following melhora de forma visível.
+
+\section{Benchmark MMLU do GPT-2 SFT}
+
+Para avaliar se o SFT em Dolly também melhorou conhecimento acadêmico amplo, reproduzi o protocolo do MMLU (\textit{Massive Multitask Language Understanding}) \cite{hendrycks2021measuring}. O benchmark contém perguntas de múltipla escolha em 57 disciplinas. Seguindo o artigo, usei prompts zero-shot e five-shot, com demonstrações retiradas do split \texttt{dev}, e a predição foi definida pela maior probabilidade normalizada entre as letras \texttt{A}, \texttt{B}, \texttt{C} e \texttt{D} no próximo token.
+
+A execução usou o dataset \texttt{cais/mmlu}. O artigo reporta 14079 perguntas no split de teste, mas o snapshot acessado nesta execução expôs 14042 exemplos nas 57 tarefas; todos foram avaliados. Também é importante notar que o baseline \texttt{gpt2} usado aqui é o GPT-2 pequeno local, não o GPT-2 de 1.5B parâmetros discutido no apêndice do artigo.
+
+\begin{table}[h]
+\centering
+\small
+\begin{tabular}{|l|l|r|r|r|r|r|}
+\hline
+\textbf{Modelo} & \textbf{Prompt} & \textbf{Hum.} & \textbf{Sociais} & \textbf{STEM} & \textbf{Outras} & \textbf{Média} \\
+\hline
+GPT-2 base & zero-shot & 24.19 & 21.77 & 21.38 & 23.88 & 22.96 \\
+GPT-2 base & five-shot & 23.85 & 30.94 & 26.48 & 26.59 & 26.60 \\
+GPT-2 SFT & zero-shot & 24.17 & 21.81 & 21.28 & 23.82 & 22.92 \\
+GPT-2 SFT & five-shot & 25.06 & 25.64 & 25.72 & 27.16 & 25.80 \\
+\hline
+\end{tabular}
+\caption{Acurácia ponderada por exemplos no MMLU. Valores em porcentagem.}
+\end{table}
+
+\begin{table}[h]
+\centering
+\small
+\begin{tabular}{|l|l|r|r|r|}
+\hline
+\textbf{Modelo} & \textbf{Prompt} & \textbf{Conf. média} & \textbf{RMS calib.} & \textbf{Shots médios} \\
+\hline
+GPT-2 base & zero-shot & 84.60 & 62.12 & 0.00 \\
+GPT-2 base & five-shot & 44.58 & 20.78 & 4.58 \\
+GPT-2 SFT & zero-shot & 85.29 & 63.12 & 0.00 \\
+GPT-2 SFT & five-shot & 43.92 & 21.10 & 4.58 \\
+\hline
+\end{tabular}
+\caption{Calibração no MMLU. Valores de confiança e erro RMS em porcentagem.}
+\end{table}
+
+Os resultados mostram que o SFT melhorou claramente a perplexidade e a aderência ao formato de instrução no Dolly, mas não transferiu essa melhoria para conhecimento multitarefa no MMLU. Em zero-shot, GPT-2 base e GPT-2 SFT ficaram praticamente empatados, em torno de 23\%. Em five-shot, o GPT-2 base chegou a 26.60\%, enquanto o GPT-2 SFT ficou em 25.80\%. Isso sugere que o ajuste supervisionado em Dolly ensinou formato e estilo de resposta, mas não adicionou conhecimento suficiente para melhorar um benchmark amplo de provas acadêmicas e profissionais.
+
+A calibração também ficou fraca, especialmente em zero-shot: os modelos atribuíram confiança média acima de 84\%, apesar de acertarem cerca de 23\%. O five-shot reduziu bastante essa superconfiança, mas ainda ficou longe de uma calibração ideal. Nos prompts five-shot, a média de demonstrações efetivamente usadas foi 4.58, pois alguns prompts excediam a janela de 1024 tokens e o avaliador removia demonstrações antes de recorrer a truncamento; no run completo, nenhum exemplo precisou ser truncado após essa remoção. Os artefatos completos foram salvos em \texttt{sft\_gpt2/mmlu\_evaluation/}.
+
+\section{Tarefa 3: Reward Model com GPT-2}
+
+A terceira etapa treinou um reward model baseado em \texttt{GPT2ForSequenceClassification}, inicializado a partir do checkpoint SFT em \texttt{sft\_gpt2/model}. A própria Databricks descreve o \texttt{databricks-dolly-15k} como um conjunto de pares \textit{prompt/response} gerados por humanos, criado para instruction tuning \cite{databricks2023dolly}. Isso torna o dataset adequado para SFT, mas não fornece diretamente o formato necessário para treinar um reward model no estilo InstructGPT, pois faltam pares comparativos ou rankings humanos entre respostas.
+
+Por isso, foi construído o dataset \texttt{rm\_synthetic}: para cada prompt, a resposta humana do Dolly foi usada como resposta de referência e tratada operacionalmente como \texttt{chosen}, enquanto uma resposta gerada pelo modelo \texttt{sft\_gpt2/model} foi usada como \texttt{rejected}. Essa escolha não significa que o Dolly contenha rótulos \texttt{chosen/rejected}; significa apenas que foi criada uma preferência sintética para exercitar a etapa de reward modeling. A função objetivo foi a loss pairwise Bradley-Terry, seguindo a formulação usada no treinamento de reward models para RLHF \cite{ouyang2022training}:
+
+\[
+    \mathcal{L} = -\log \sigma(r_{\theta}(x, y_w) - r_{\theta}(x, y_l)),
+\]
+
+em que $y_w$ representa a resposta preferida e $y_l$ representa a resposta rejeitada.
+
+O treinamento foi executado por uma época, com \texttt{max\_length=1024}, learning rate $1 \times 10^{-5}$, warmup de 3\%, weight decay 0.01, batch por GPU 8, gradient accumulation 4 e quatro GPUs via \texttt{accelerate}. O modelo final foi salvo em \texttt{reward\_gpt2/model}.
+
+\begin{table}[h]
+\centering
+\begin{tabular}{|l|r|}
+\hline
+\textbf{Métrica} & \textbf{Valor no teste} \\
+\hline
+Pairwise accuracy & 0.7265 \\
+Pair loss & 0.5531 \\
+Reward médio chosen & 2.6860 \\
+Reward médio rejected & 2.1629 \\
+Margem média & 0.5231 \\
+\hline
+\end{tabular}
+\caption{Resultados do reward model no conjunto de teste.}
+\end{table}
+
+O resultado indica que o reward model aprendeu um sinal útil para diferenciar respostas Dolly de respostas geradas pelo SFT. Porém, a interpretação correta é restrita: o modelo aprendeu uma preferência sintética Dolly-versus-SFT, não preferência humana. A análise por categoria mostrou melhor desempenho em \texttt{brainstorming} e \texttt{creative\_writing}, e desempenho mais fraco em \texttt{closed\_qa} e \texttt{classification}, onde respostas curtas e superficialmente plausíveis confundem mais o modelo.
+
+Também foi observado um viés moderado relacionado ao comprimento da resposta rejeitada, com correlação de 0.3211 entre margem e número de palavras da resposta rejeitada. Esse ponto é importante porque pode induzir o PPO a explorar artefatos do reward model.
+
+\subsection*{Exemplos do reward model}
+
+\begin{quote}
+\small
+\textbf{Prompt:} give me a list of all the ways a person can hydrate.
+
+\textbf{Chosen / Dolly:} ``- drink water from a glass; - drink water using a straw; - drink water from a hose; - suck on an ice cube; - have a cucumber; - get an IV; - drink an electrolyte''
+
+\textbf{Rejected / SFT:} ``- Drink water - Clean - Clean up your environment - Clean your hair - Clean your sleep''
+
+\textbf{Rewards:} chosen = 4.2104; rejected = 2.1725; margem = 2.0378.
+\end{quote}
+
+Esse é um caso em que o reward model funciona como esperado: a resposta Dolly é mais completa e está semanticamente alinhada ao pedido, enquanto a resposta rejeitada mistura hidratação com ações fora do tema.
+
+\begin{quote}
+\small
+\textbf{Prompt:} Identify the bird from the list: Canada Dry, Canada goose, Goosebumps.
+
+\textbf{Chosen / Dolly:} ``Canada goose''
+
+\textbf{Rejected / SFT:} ``Canada Dry''
+
+\textbf{Rewards:} chosen = 2.8376; rejected = 2.5161; margem = 0.3215.
+\end{quote}
+
+Nesse exemplo curto, o reward model também atribui maior recompensa à resposta correta. A margem é menor porque as duas respostas são curtas e lexicalmente parecidas, o que torna a distinção mais difícil.
+
+\begin{quote}
+\small
+\textbf{Prompt:} Categorize each item as spicy, not spicy or sometimes spicy: jalapenos, chilis, sriracha, chips, pizza, cocktails, fruit, milk.
+
+\textbf{Chosen / Dolly:} ``Jalapenos are spicy. Chilis are spicy. Sriracha is spicy. Chips are sometimes spicy. Pizza is sometimes spicy. Cocktails are sometimes spicy. Fruit is not spicy. Milk is not spicy.''
+
+\textbf{Rejected / SFT:} ``* jalapenos * chilis * sriracha * chips * fruit * milk * jalapenos''
+
+\textbf{Rewards:} chosen = 2.0478; rejected = 2.6307; margem = -0.5830.
+\end{quote}
+
+Esse terceiro caso mostra uma falha útil para análise: o reward model preferiu uma resposta incompleta, provavelmente por artefatos superficiais de formato ou cópia lexical do prompt. Isso reforça que o RM treinado aqui é um proxy sintético, não um avaliador humano robusto.
+
+\section{Tarefa 4: Fine-Tuning com PPO}
+
+A quarta etapa fechou o pipeline RLHF com PPO. O algoritmo PPO foi proposto por Schulman et al. como uma alternativa estável e simples para otimização de políticas por gradiente \cite{schulman2017proximal}. A política inicial foi \texttt{sft\_gpt2/model}, a referência KL congelada também foi \texttt{sft\_gpt2/model}, e o reward model congelado foi \texttt{reward\_gpt2/model}. O dataset usado foi o \texttt{rlhf\_dolly\_datasets/ppo}, que contém apenas prompts.
+
+O PPO foi configurado de forma conservadora: uma passagem pelo split de treino, learning rate $1 \times 10^{-6}$, \texttt{clip=0.2}, coeficiente KL 0.02, \texttt{max\_new\_tokens=96}, \texttt{top\_p=0.95}, temperatura 1.0 e quatro GPUs via \texttt{accelerate}. O modelo final foi salvo em \texttt{ppo\_gpt2/model}.
+
+\begin{table}[h]
+\centering
+\begin{tabular}{|l|r|r|r|}
+\hline
+\textbf{Métrica} & \textbf{SFT} & \textbf{PPO} & \textbf{Delta PPO-SFT} \\
+\hline
+Loss teste & 2.6772 & 2.6985 & 0.0213 \\
+Perplexidade teste & 14.54 & 14.86 & 0.31 \\
+Reward médio nas gerações & 1.1068 & 1.2411 & 0.1343 \\
+ROUGE-L F1 médio & 0.2470 & 0.2474 & 0.0004 \\
+Taxa de cópia do prompt & 0.6130 & 0.6192 & 0.0062 \\
+\hline
+\end{tabular}
+\caption{Comparação final entre o modelo SFT e o modelo PPO.}
+\end{table}
+
+O PPO aumentou o reward médio atribuído pelo reward model nas amostras qualitativas, mas a win rate PPO-versus-SFT pelo próprio reward model ficou em 0.5000. Além disso, a perplexidade piorou levemente. Portanto, o resultado deve ser interpretado como um protótipo funcional de otimização por PPO, não como uma melhoria inequívoca do modelo.
+
+Os diagnósticos de treinamento reforçam essa cautela. O treinamento PPO apresentou \texttt{clip\_fraction} médio de 0.8234, KL absoluto médio de 1.2718 e ratios muito altos ao final do treino. Isso sugere atualização agressiva, possível instabilidade e risco de overoptimization do reward model. Para uma versão mais robusta, seria recomendável usar menor learning rate, controle KL mais forte, rollouts mais curtos e, principalmente, preferências humanas reais.
+
+\subsection*{Exemplos do PPO}
+
+\begin{quote}
+\small
+\textbf{Prompt:} Tell me all the different ways I could eat an orange.
+
+\textbf{Referência Dolly:} ``You could slice it in circles. You could cut it into cubes and add it to a fruit salad. You could juice it...''
+
+\textbf{SFT:} ``1. I could eat a banana, a banana peel, a banana peel, a banana peel...''
+
+\textbf{PPO:} ``1. I could eat a banana. 2. I could eat a banana with a spoon. 3. I could eat a banana with a fork...''
+
+\textbf{Reward:} SFT = 0.1482; PPO = 1.2499.
+\end{quote}
+
+O PPO recebeu reward maior porque reduziu parte da repetição extrema e gerou uma estrutura enumerada mais clara. Porém, a resposta continua errada, pois fala de banana em vez de laranja. Esse exemplo ilustra bem o risco de otimizar um reward model imperfeito: a recompensa sobe, mas a qualidade semântica não necessariamente acompanha.
+
+\begin{quote}
+\small
+\textbf{Prompt:} If we wanted to play sports that involve a ball, which of these would we play: soccer, football, swimming, snowboard, skiing, baseball.
+
+\textbf{Referência Dolly:} ``Soccer, football and baseball are sports that require a ball whereas swimming, snowboarding and skiing do not.''
+
+\textbf{SFT:} ``The soccer ball would be played on a flat surface, while the football would be played on a flat surface.''
+
+\textbf{PPO:} ``The soccer ball would be played on a stick, while the snowboard would be played on a ball.''
+
+\textbf{Reward:} SFT = 2.2964; PPO = 2.3266.
+\end{quote}
+
+Nesse caso, o reward do PPO aumenta levemente, mas a resposta piora semanticamente ao associar snowboard a uma bola. Esse é um exemplo direto de reward hacking ou, pelo menos, de desalinhamento entre o score do RM e a qualidade factual da resposta.
+
+\begin{quote}
+\small
+\textbf{Prompt:} Wat is goede vrijdag?
+
+\textbf{Referência Dolly:} ``De dag dat Jezus gekruisigd werd''
+
+\textbf{SFT:} ``Goede Vrijdag is de vrijdag voor Pasen.''
+
+\textbf{PPO:} ``Goede Vrijdag is de vrijdag voor Pasen.''
+
+\textbf{Reward:} SFT = 3.0696; PPO = 3.0696.
+\end{quote}
+
+Também houve casos em que PPO praticamente não alterou a política. Isso ajuda a explicar a win rate PPO-versus-SFT de 0.5000: em parte dos prompts, as respostas permaneceram iguais ou muito próximas.
+
+\section{Discussão Geral}
+
+O pipeline entregue reproduz as principais peças de um fluxo RLHF no estilo InstructGPT em escala didática: demonstrações humanas para SFT, pares preferenciais para RM e otimização da política com PPO \cite{ouyang2022training,schulman2017proximal}. A maior melhoria objetiva ocorreu no SFT, que reduziu a perplexidade do GPT-2 base de 16.41 para 11.65. O reward model também aprendeu um sinal mensurável, alcançando 72.65\% de acurácia pairwise no teste sintético.
+
+O PPO, por outro lado, mostrou o trade-off esperado em RLHF: otimizar o reward model pode aumentar a recompensa média sem necessariamente melhorar qualidade, factualidade ou aderência às referências. Como o reward model foi treinado com preferências sintéticas, o ganho de reward não deve ser lido como ganho de alinhamento humano. A avaliação qualitativa ainda mostra repetições, respostas incorretas e respostas excessivamente copiadas do prompt.
+
+\section{Conclusão}
+
+As quatro tarefas foram concluídas: datasets RLHF foram construídos e publicados; o GPT-2 foi ajustado por SFT; um reward model GPT-2 foi treinado e avaliado; e o modelo SFT foi otimizado com PPO usando o dataset PPO existente. O resultado final é um pipeline local completo e reprodutível para estudo de RLHF.
+
+Do ponto de vista experimental, o SFT é a etapa com ganho mais claro. O reward model é útil para exercitar o pipeline, mas permanece um proxy sintético. O PPO fecha a arquitetura de treinamento, mas seus resultados indicam que a próxima melhoria relevante não é apenas treinar por mais tempo: é melhorar a qualidade do sinal de preferência e estabilizar a otimização.
+
+
+\bibliographystyle{abbrv}
+\bibliography{references}
+
+\end{document}
