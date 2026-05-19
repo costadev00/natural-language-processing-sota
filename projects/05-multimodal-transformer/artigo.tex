@@ -68,13 +68,18 @@ p09\_report\_landmark & report & gpt-5-nano \\
 p10\_reasoning\_scene & reasoning & gpt-5-nano \\
 \hline
 \end{tabular}
-\caption{Resultado da avaliação pareada em escala reduzida, inspirada no protocolo do Chameleon. As respostas foram avaliadas de forma anonimizada, como pares A/B em ordem aleatória, antes da revelação do modelo vencedor.}
+\caption{Resultado da avaliação pareada em escala reduzida, inspirada no protocolo do Chameleon. \textbf{As respostas foram avaliadas por mim de forma anonimizada}, como pares A/B em ordem aleatória, antes da revelação do modelo vencedor.}
 \label{tab:chameleon-mini-eval}
 \end{table}
 
-A Tabela~\ref{tab:chameleon-mini-eval} mostra que, nos 10 pares avaliados de forma anonimizada, o \texttt{gpt-5-nano} foi preferido em todos os casos. O resultado não deve ser interpretado como uma comparação definitiva entre as famílias de modelos, pois foi usado o Chameleon 7B público, e não o Chameleon 34B avaliado no artigo original. Mesmo assim, a execução revelou diferenças qualitativas claras. O Chameleon 7B frequentemente produziu respostas úteis no início, mas também apresentou repetições, truncamentos, artefatos textuais como ``Home'', falhas em seguir o formato \texttt{<caption>} e algumas alucinações visuais. Em prompts com imagem, por exemplo, o modelo identificou corretamente a Estátua da Liberdade em um caso, mas alucinou a presença de um camaleão em uma imagem que continha gatos. O \texttt{gpt-5-nano}, por outro lado, seguiu melhor as instruções, manteve respostas mais completas e estruturadas, e foi mais consistente nos prompts de identificação e raciocínio visual.
+A Tabela~\ref{tab:chameleon-mini-eval} mostra que, nos 10 pares avaliados por mim de forma anonimizada, o \texttt{gpt-5-nano} foi preferido em todos os casos. O resultado não deve ser interpretado como uma comparação definitiva entre as famílias de modelos, pois foi usado o Chameleon 7B público, e não o Chameleon 34B avaliado no artigo original. Mesmo assim, a execução revelou diferenças qualitativas claras. O Chameleon 7B frequentemente produziu respostas úteis no início, mas também apresentou repetições, truncamentos, artefatos textuais como ``Home'', falhas em seguir o formato \texttt{<caption>} e algumas alucinações visuais. Em prompts com imagem, por exemplo, o modelo identificou corretamente a Estátua da Liberdade em um caso, mas alucinou a presença de um camaleão em uma imagem que continha gatos. O \texttt{gpt-5-nano}, por outro lado, seguiu melhor as instruções, manteve respostas mais completas e estruturadas, e foi mais consistente nos prompts de identificação e raciocínio visual.
 
 Para ilustrar essa diferença qualitativa, um dos prompts pedia uma história infantil em quatro cenas sobre um polvo que não conseguia parar de comer pizza, incluindo uma legenda visual para cada cena. O Chameleon 7B iniciou a resposta corretamente, mas terminou desviando para um comentário irrelevante sobre a própria avaliação do artigo:
+
+\begin{quote}
+\small
+\textbf{Prompt:} ``Create and illustrate a short children's story about an octopus that can't stop eating pizza. Use 4 short scenes, and include one image caption after each scene.''
+\end{quote}
 
 \begin{quote}
 \small
@@ -89,6 +94,11 @@ No mesmo prompt, o \texttt{gpt-5-nano} manteve a estrutura solicitada e produziu
 \end{quote}
 
 Um segundo exemplo ocorreu em um prompt com duas imagens de entrada, uma contendo gatos e outra contendo aves, no qual era pedido comparar os animais. O Chameleon 7B alucinou a presença de um camaleão na primeira imagem:
+
+\begin{quote}
+\small
+\textbf{Prompt:} ``Compare the main animals in these two images. Describe how their body shapes, colors, and likely behaviors differ, then include two captions for additional example images that would help a child learn the difference.''
+\end{quote}
 
 \begin{quote}
 \small
