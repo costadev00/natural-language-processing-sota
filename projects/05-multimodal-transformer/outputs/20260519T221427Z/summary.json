@@ -1,0 +1,42 @@
+{
+  "total_votes": 10,
+  "winner_counts": {
+    "gpt-5-nano": 10
+  },
+  "raw_votes": {
+    "a": 3,
+    "b": 7
+  },
+  "by_category": {
+    "advice": {
+      "gpt-5-nano": 1
+    },
+    "brainstorming": {
+      "gpt-5-nano": 1
+    },
+    "comparison": {
+      "gpt-5-nano": 1
+    },
+    "explanation": {
+      "gpt-5-nano": 1
+    },
+    "how-to": {
+      "gpt-5-nano": 1
+    },
+    "hypothetical": {
+      "gpt-5-nano": 1
+    },
+    "identification": {
+      "gpt-5-nano": 1
+    },
+    "reasoning": {
+      "gpt-5-nano": 1
+    },
+    "report": {
+      "gpt-5-nano": 1
+    },
+    "story": {
+      "gpt-5-nano": 1
+    }
+  }
+}

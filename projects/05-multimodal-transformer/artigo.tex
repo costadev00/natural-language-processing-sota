@@ -40,6 +40,72 @@ A principal vantagem da abordagem com encoder e conector é a praticidade: ela p
 
 Em síntese, criar um Transformer Multimodal significa transformar diferentes modalidades em representações compatíveis, combiná-las em uma arquitetura Transformer e treinar o modelo para prever saídas condicionadas a múltiplos tipos de entrada. A diferença fundamental entre os modelos está em onde ocorre a fusão: modelos baseados em encoder e conector fazem a fusão depois que cada modalidade já foi processada separadamente, enquanto modelos \textit{early-fusion} fazem a fusão logo no nível dos tokens. Essa distinção é central para entender a evolução recente dos MLLMs.
 
+\section*{\textbf{Reprodução experimental em escala reduzida}}
+
+Além da revisão conceitual, foi realizada uma reprodução em escala reduzida da avaliação humana descrita no artigo do Chameleon. No trabalho original, os autores coletam prompts naturais, de uso cotidiano, que podem conter apenas texto ou uma combinação de texto e imagens, e pedem respostas que idealmente misturem texto e imagens. Em seguida, as respostas de diferentes modelos são avaliadas por humanos de duas formas: uma avaliação absoluta, em que se julga se a resposta cumpre a tarefa, e uma avaliação relativa, em que duas respostas ao mesmo prompt são apresentadas lado a lado e o avaliador escolhe a melhor, ou declara empate \cite{chameleon2024}.
+
+Nesta reprodução, o objetivo não foi reconstruir o benchmark completo, mas sim reproduzir o espírito metodológico da comparação pareada. Para isso, foram definidos 10 prompts inspirados nas categorias usadas no artigo: \textit{advice}, \textit{brainstorming}, \textit{comparison}, \textit{how-to}, \textit{article}/\textit{story}, \textit{explanation}, \textit{hypothetical}, \textit{identification}, \textit{report} e \textit{reasoning}. Cinco prompts usaram apenas texto, enquanto cinco incluíram imagens de entrada, como o diagrama da Figura~\ref{fig:chameleon-mixed-modal}, uma imagem da Estátua da Liberdade, gatos e aves. Para os prompts que solicitavam imagens na resposta, os modelos foram instruídos a produzir blocos textuais do tipo \texttt{<caption>...</caption>}, que representam a imagem que deveria ser gerada.
+
+Os modelos comparados foram o \texttt{facebook/chameleon-7b}, executado localmente via Hugging Face Transformers, e o \texttt{gpt-5-nano}, acessado via API da OpenAI. A máquina utilizada possuía quatro GPUs NVIDIA RTX 4000 Ada, mas a execução final do Chameleon 7B foi feita em uma única GPU, pois o modelo de 7B parâmetros coube em memória e a distribuição automática em várias GPUs introduzia sobrecarga desnecessária. A geração foi limitada a 350 novos tokens para o Chameleon, de modo a manter a execução viável e comparável entre os 10 prompts. O modelo da OpenAI foi configurado com esforço mínimo de raciocínio para evitar que o orçamento de saída fosse consumido apenas por tokens internos de raciocínio.
+
+Há uma limitação importante nessa reprodução. Embora o artigo descreva o Chameleon como um modelo capaz de gerar sequências intercaladas de texto e imagem, os checkpoints públicos disponíveis no Hugging Face para o Chameleon são expostos, na prática, como modelos de \textit{image-text-to-text}. Ou seja, eles aceitam texto e imagens como entrada e geram texto como saída, mas não disponibilizam no fluxo usado aqui o decodificador de imagem necessário para materializar imagens geradas. Por isso, a comparação abaixo avalia compreensão multimodal e geração textual com descrições de imagens, não geração visual real. A reprodução é, portanto, metodológica e qualitativa, não uma réplica direta dos números do artigo original.
+
+\begin{table}[htbp]
+\centering
+\begin{tabular}{lll}
+\hline
+Prompt & Categoria & Vencedor \\
+\hline
+p01\_brainstorming\_birds & brainstorming & gpt-5-nano \\
+p02\_how\_to\_tv & how-to & gpt-5-nano \\
+p03\_hypothetical\_vehicle & hypothetical & gpt-5-nano \\
+p04\_story\_octopus & story & gpt-5-nano \\
+p05\_advice\_workspace & advice & gpt-5-nano \\
+p06\_explanation\_architecture & explanation & gpt-5-nano \\
+p07\_identification\_statue & identification & gpt-5-nano \\
+p08\_comparison\_animals & comparison & gpt-5-nano \\
+p09\_report\_landmark & report & gpt-5-nano \\
+p10\_reasoning\_scene & reasoning & gpt-5-nano \\
+\hline
+\end{tabular}
+\caption{Resultado da avaliação pareada em escala reduzida, inspirada no protocolo do Chameleon. As respostas foram avaliadas de forma anonimizada, como pares A/B em ordem aleatória, antes da revelação do modelo vencedor.}
+\label{tab:chameleon-mini-eval}
+\end{table}
+
+A Tabela~\ref{tab:chameleon-mini-eval} mostra que, nos 10 pares avaliados de forma anonimizada, o \texttt{gpt-5-nano} foi preferido em todos os casos. O resultado não deve ser interpretado como uma comparação definitiva entre as famílias de modelos, pois foi usado o Chameleon 7B público, e não o Chameleon 34B avaliado no artigo original. Mesmo assim, a execução revelou diferenças qualitativas claras. O Chameleon 7B frequentemente produziu respostas úteis no início, mas também apresentou repetições, truncamentos, artefatos textuais como ``Home'', falhas em seguir o formato \texttt{<caption>} e algumas alucinações visuais. Em prompts com imagem, por exemplo, o modelo identificou corretamente a Estátua da Liberdade em um caso, mas alucinou a presença de um camaleão em uma imagem que continha gatos. O \texttt{gpt-5-nano}, por outro lado, seguiu melhor as instruções, manteve respostas mais completas e estruturadas, e foi mais consistente nos prompts de identificação e raciocínio visual.
+
+Para ilustrar essa diferença qualitativa, um dos prompts pedia uma história infantil em quatro cenas sobre um polvo que não conseguia parar de comer pizza, incluindo uma legenda visual para cada cena. O Chameleon 7B iniciou a resposta corretamente, mas terminou desviando para um comentário irrelevante sobre a própria avaliação do artigo:
+
+\begin{quote}
+\small
+\textbf{Chameleon 7B:} ``Scene 4: \texttt{<caption>}The octopus was sitting on the rock, staring at the empty pizza box. [...] \texttt{</caption>} I hope this story and illustrations help you understand the concept of the Chameleon paper's human evaluation. I apologize for the confusion earlier...''
+\end{quote}
+
+No mesmo prompt, o \texttt{gpt-5-nano} manteve a estrutura solicitada e produziu cenas mais coerentes:
+
+\begin{quote}
+\small
+\textbf{gpt-5-nano:} ``Scene 1 Octopus Ollie lived in a cozy coral cove [...] \texttt{<caption>}Caption: A cheerful octopus with doughy eyes sits atop a sunken pizza box, tentacles wrapped around several greasy slices...\texttt{</caption>}''
+\end{quote}
+
+Um segundo exemplo ocorreu em um prompt com duas imagens de entrada, uma contendo gatos e outra contendo aves, no qual era pedido comparar os animais. O Chameleon 7B alucinou a presença de um camaleão na primeira imagem:
+
+\begin{quote}
+\small
+\textbf{Chameleon 7B:} ``The two images you provided are of a chameleon and a parrot. The chameleon is a reptile with a slender body and a long tail...''
+\end{quote}
+
+Já o \texttt{gpt-5-nano} identificou corretamente os principais elementos visuais:
+
+\begin{quote}
+\small
+\textbf{gpt-5-nano:} ``Image 1 (two domestic cats on a pink blanket): Body shapes: slim, flexible bodies with short legs, rounded paws, and long tails. [...] Image 2 (two parrots, likely macaws...)''
+\end{quote}
+
+Esses exemplos ajudam a explicar o resultado da avaliação pareada: a diferença não esteve apenas na fluidez textual, mas principalmente no seguimento das instruções multimodais, na fidelidade às imagens de entrada e na ausência de deriva temática.
+
+Essa reprodução reforça dois pontos discutidos no artigo. Primeiro, avaliações abertas e qualitativas são importantes porque capturam falhas de seguimento de instrução, coerência e alucinação que métricas automáticas simples dificilmente resumem bem. Segundo, a disponibilidade pública de um modelo nem sempre corresponde a todas as capacidades descritas no artigo científico: no caso do Chameleon, a arquitetura foi proposta como \textit{mixed-modal} e capaz de gerar texto e imagem, mas o uso prático do checkpoint público no ecossistema Hugging Face ficou restrito à geração textual condicionada por texto e imagens. Portanto, a comparação experimental também evidencia a diferença entre capacidade arquitetural, checkpoint liberado e interface efetivamente disponível ao usuário.
+
 \begin{thebibliography}{9}
 
 \bibitem{yin2024survey}

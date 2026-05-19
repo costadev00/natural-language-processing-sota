@@ -66,12 +66,40 @@ def parse_args() -> argparse.Namespace:
         default="auto",
         help="Quantization for the Chameleon checkpoint. auto uses 4bit for 30B and bf16 for smaller checkpoints.",
     )
+    parser.add_argument(
+        "--max-memory-per-gpu",
+        default=None,
+        help="Optional Accelerate max_memory value for each visible GPU, for example '18GiB'.",
+    )
     parser.add_argument("--max-new-tokens", type=int, default=700)
     parser.add_argument("--temperature", type=float, default=0.0)
     parser.add_argument("--skip-chameleon", action="store_true")
+    parser.add_argument(
+        "--hf-download-workers",
+        type=int,
+        default=1,
+        help="Number of parallel workers for the explicit Hugging Face snapshot predownload.",
+    )
+    parser.add_argument(
+        "--skip-hf-predownload",
+        action="store_true",
+        help="Let Transformers download model files lazily instead of predownloading the snapshot.",
+    )
 
     parser.add_argument("--openai-model", default="gpt-5-nano")
     parser.add_argument("--max-output-tokens", type=int, default=700)
+    parser.add_argument(
+        "--openai-reasoning-effort",
+        choices=["none", "minimal", "low", "medium", "high", "xhigh"],
+        default="minimal",
+        help="Reasoning effort for reasoning-capable OpenAI models. minimal prevents empty outputs caused by spending the whole output budget on reasoning tokens.",
+    )
+    parser.add_argument(
+        "--openai-text-verbosity",
+        choices=["low", "medium", "high"],
+        default="medium",
+        help="Text verbosity for OpenAI Responses API models that support it.",
+    )
     parser.add_argument("--openai-image-detail", choices=["low", "high", "auto"], default="low")
     parser.add_argument("--skip-openai", action="store_true")
 
@@ -84,8 +112,8 @@ def parse_args() -> argparse.Namespace:
 
 
 def load_environment() -> None:
-    load_dotenv_file(REPO_ROOT / ".env")
-    load_dotenv_file(PROJECT_DIR / ".env")
+    load_dotenv_file(REPO_ROOT / ".env", override=True)
+    load_dotenv_file(PROJECT_DIR / ".env", override=True)
 
 
 def load_dotenv_file(path: Path, override: bool = False) -> None:
@@ -271,9 +299,50 @@ def chameleon_quantization(model_id: str, setting: str) -> str:
     return "4bit" if "30b" in model_id.lower() else "none"
 
 
-def load_chameleon(model_id: str, quantization: str, hf_token: str) -> tuple[Any, Any, str]:
+def visible_gpu_count() -> int:
+    try:
+        import torch
+
+        return torch.cuda.device_count()
+    except Exception:
+        return 0
+
+
+def max_memory_map(max_memory_per_gpu: str | None) -> dict[int, str] | None:
+    if not max_memory_per_gpu:
+        return None
+    return {idx: max_memory_per_gpu for idx in range(visible_gpu_count())}
+
+
+def predownload_hf_snapshot(model_id: str, hf_token: str, workers: int) -> Path:
+    from huggingface_hub import snapshot_download
+
+    return Path(
+        snapshot_download(
+            repo_id=model_id,
+            token=hf_token,
+            max_workers=max(1, workers),
+            resume_download=True,
+        )
+    )
+
+
+def load_chameleon(
+    model_id: str,
+    quantization: str,
+    hf_token: str,
+    max_memory_per_gpu: str | None,
+    hf_download_workers: int,
+    skip_hf_predownload: bool,
+) -> tuple[Any, Any, str]:
     import torch
     from transformers import BitsAndBytesConfig, ChameleonForConditionalGeneration, ChameleonProcessor
+
+    model_path = model_id
+    if not skip_hf_predownload:
+        print(f"Predownloading {model_id} with {max(1, hf_download_workers)} worker(s)...", flush=True)
+        model_path = str(predownload_hf_snapshot(model_id, hf_token, hf_download_workers))
+        print(f"Using local snapshot: {model_path}", flush=True)
 
     quantization = chameleon_quantization(model_id, quantization)
     kwargs: dict[str, Any] = {
@@ -281,6 +350,9 @@ def load_chameleon(model_id: str, quantization: str, hf_token: str) -> tuple[Any
         "device_map": "auto",
         "attn_implementation": "sdpa",
     }
+    max_memory = max_memory_map(max_memory_per_gpu)
+    if max_memory:
+        kwargs["max_memory"] = max_memory
     if quantization == "4bit":
         kwargs["quantization_config"] = BitsAndBytesConfig(
             load_in_4bit=True,
@@ -293,8 +365,8 @@ def load_chameleon(model_id: str, quantization: str, hf_token: str) -> tuple[Any
     else:
         kwargs["torch_dtype"] = torch.bfloat16
 
-    processor = ChameleonProcessor.from_pretrained(model_id, token=hf_token)
-    model = ChameleonForConditionalGeneration.from_pretrained(model_id, **kwargs)
+    processor = ChameleonProcessor.from_pretrained(model_path, token=hf_token)
+    model = ChameleonForConditionalGeneration.from_pretrained(model_path, **kwargs)
     model.eval()
     return processor, model, quantization
 
@@ -303,6 +375,27 @@ def first_model_device(model: Any) -> Any:
     for parameter in model.parameters():
         return parameter.device
     return "cuda"
+
+
+def first_model_dtype(model: Any) -> Any:
+    for parameter in model.parameters():
+        return parameter.dtype
+    return None
+
+
+def move_inputs_to_model(inputs: Any, model: Any) -> Any:
+    import torch
+
+    device = first_model_device(model)
+    dtype = first_model_dtype(model)
+    for key, value in list(inputs.items()):
+        if not hasattr(value, "to"):
+            continue
+        if torch.is_tensor(value) and torch.is_floating_point(value) and dtype is not None:
+            inputs[key] = value.to(device=device, dtype=dtype)
+        else:
+            inputs[key] = value.to(device=device)
+    return inputs
 
 
 def run_chameleon_one(
@@ -324,7 +417,7 @@ def run_chameleon_one(
     if pil_images:
         processor_kwargs["images"] = pil_images
     inputs = processor(**processor_kwargs)
-    inputs = inputs.to(first_model_device(model))
+    inputs = move_inputs_to_model(inputs, model)
 
     generation_kwargs: dict[str, Any] = {
         "max_new_tokens": args.max_new_tokens,
@@ -385,11 +478,14 @@ def run_openai_one(client: Any, prompt: dict[str, Any], images: list[LocalImage]
             }
         )
 
-    response = client.responses.create(
-        model=args.openai_model,
-        input=[{"role": "user", "content": content}],
-        max_output_tokens=args.max_output_tokens,
-    )
+    create_kwargs: dict[str, Any] = {
+        "model": args.openai_model,
+        "input": [{"role": "user", "content": content}],
+        "max_output_tokens": args.max_output_tokens,
+        "reasoning": {"effort": args.openai_reasoning_effort},
+        "text": {"verbosity": args.openai_text_verbosity},
+    }
+    response = client.responses.create(**create_kwargs)
 
     return {
         "provider": "openai",
@@ -513,7 +609,14 @@ def main() -> int:
     chameleon_loaded: tuple[Any, Any, str, str] | None = None
     if not args.skip_chameleon:
         try:
-            processor, model, quantization = load_chameleon(args.model, args.chameleon_quantization, hf_token)
+            processor, model, quantization = load_chameleon(
+                args.model,
+                args.chameleon_quantization,
+                hf_token,
+                args.max_memory_per_gpu,
+                args.hf_download_workers,
+                args.skip_hf_predownload,
+            )
             chameleon_loaded = (processor, model, args.model, quantization)
         except Exception as exc:
             if args.no_fallback or args.fallback_model == args.model:
@@ -521,7 +624,14 @@ def main() -> int:
             print(f"Primary Chameleon load failed: {exc}", file=sys.stderr)
             print(f"Trying fallback model: {args.fallback_model}", file=sys.stderr)
             cleanup_cuda()
-            processor, model, quantization = load_chameleon(args.fallback_model, args.chameleon_quantization, hf_token)
+            processor, model, quantization = load_chameleon(
+                args.fallback_model,
+                args.chameleon_quantization,
+                hf_token,
+                args.max_memory_per_gpu,
+                args.hf_download_workers,
+                args.skip_hf_predownload,
+            )
             chameleon_loaded = (processor, model, args.fallback_model, quantization)
 
     openai_client = None
@@ -529,16 +639,30 @@ def main() -> int:
         openai_client = create_openai_client()
 
     for index, prompt in enumerate(prompts, start=1):
-        print(f"[{index}/{len(prompts)}] {prompt['id']}")
-        images = collect_images(prompt, args.image_cache)
+        print(f"[{index}/{len(prompts)}] {prompt['id']}", flush=True)
+        try:
+            images = collect_images(prompt, args.image_cache)
+        except Exception as exc:  # noqa: BLE001 - keep eval run alive.
+            print(f"  - image input error: {exc}", flush=True)
+            common = base_row(run_dir.name, prompt, [])
+            common["image_error"] = str(exc)
+            if chameleon_loaded and not args.skip_chameleon:
+                _, _, model_id, _ = chameleon_loaded
+                append_jsonl(responses_path, {**common, **error_row("huggingface", model_id, exc)})
+            if not args.skip_openai:
+                append_jsonl(responses_path, {**common, **error_row("openai", args.openai_model, exc)})
+            continue
         common = base_row(run_dir.name, prompt, images)
 
         if chameleon_loaded and not args.skip_chameleon:
             processor, model, model_id, quantization = chameleon_loaded
             try:
+                print(f"  - generating Hugging Face response with {model_id}...", flush=True)
                 result = run_chameleon_one(processor, model, model_id, quantization, prompt, images, args)
+                print(f"  - Hugging Face done in {result['latency_s']}s", flush=True)
             except Exception as exc:  # noqa: BLE001 - keep eval run alive.
                 result = error_row("huggingface", model_id, exc)
+                print(f"  - Hugging Face error: {exc}", flush=True)
             row = {**common, **result}
             if args.openai_image_render and openai_client:
                 row["rendered_images"] = render_caption_images(
@@ -552,9 +676,12 @@ def main() -> int:
 
         if not args.skip_openai:
             try:
+                print(f"  - generating OpenAI response with {args.openai_model}...", flush=True)
                 result = run_openai_one(openai_client, prompt, images, args)
+                print(f"  - OpenAI done in {result['latency_s']}s", flush=True)
             except Exception as exc:  # noqa: BLE001 - keep eval run alive.
                 result = error_row("openai", args.openai_model, exc)
+                print(f"  - OpenAI error: {exc}", flush=True)
             row = {**common, **result}
             if args.openai_image_render and openai_client:
                 row["rendered_images"] = render_caption_images(

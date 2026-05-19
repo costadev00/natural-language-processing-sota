@@ -58,9 +58,9 @@
       {
         "id": "statue_of_liberty",
         "source": "url",
-        "url": "https://upload.wikimedia.org/wikipedia/commons/a/a1/Statue_of_Liberty_7.jpg",
+        "url": "https://cdn.britannica.com/61/93061-050-99147DCE/Statue-of-Liberty-Island-New-York-Bay.jpg",
         "filename": "statue_of_liberty.jpg",
-        "description": "Statue of Liberty photograph from Wikimedia Commons."
+        "description": "Statue of Liberty photograph."
       }
     ],
     "prompt": "Is the image below the Eiffel Tower? If not, identify the landmark, describe two visual clues, and include one image caption showing what the Eiffel Tower would look like for comparison."
@@ -97,9 +97,9 @@
       {
         "id": "statue_of_liberty",
         "source": "url",
-        "url": "https://upload.wikimedia.org/wikipedia/commons/a/a1/Statue_of_Liberty_7.jpg",
+        "url": "https://cdn.britannica.com/61/93061-050-99147DCE/Statue-of-Liberty-Island-New-York-Bay.jpg",
         "filename": "statue_of_liberty.jpg",
-        "description": "Statue of Liberty photograph from Wikimedia Commons."
+        "description": "Statue of Liberty photograph."
       }
     ],
     "prompt": "Write a concise report about the landmark in this image: what it is, where it is, what it commemorates, and why it is visually recognizable. Include one caption for a related historical illustration."
