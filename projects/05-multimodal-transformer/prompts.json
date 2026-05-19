@@ -1,0 +1,123 @@
+[
+  {
+    "id": "p01_brainstorming_birds",
+    "category": "brainstorming",
+    "input_modality": "text",
+    "requires_image_output": true,
+    "prompt": "I'm bored. Could you show me three cool, quirky-looking birds? Tell me about each one in 2-3 sentences and include an image caption for each bird."
+  },
+  {
+    "id": "p02_how_to_tv",
+    "category": "how-to",
+    "input_modality": "text",
+    "requires_image_output": true,
+    "prompt": "How do I properly clean my TV screen? I used regular glass cleaner and now there are towel fibers and wipe marks all over it. Give practical steps and include two reference image captions showing what the screen should look like before and after."
+  },
+  {
+    "id": "p03_hypothetical_vehicle",
+    "category": "hypothetical",
+    "input_modality": "text",
+    "requires_image_output": true,
+    "prompt": "What would a modern everyday vehicle look like if petroleum had never become a dominant fuel source? Explain the design tradeoffs and include one image caption for the vehicle."
+  },
+  {
+    "id": "p04_story_octopus",
+    "category": "story",
+    "input_modality": "text",
+    "requires_image_output": true,
+    "prompt": "Create and illustrate a short children's story about an octopus that can't stop eating pizza. Use 4 short scenes, and include one image caption after each scene."
+  },
+  {
+    "id": "p05_advice_workspace",
+    "category": "advice",
+    "input_modality": "text",
+    "requires_image_output": true,
+    "prompt": "I need to make a tiny home workspace feel calmer and less cluttered without buying much. Give informed advice and include two image captions that could serve as visual references."
+  },
+  {
+    "id": "p06_explanation_architecture",
+    "category": "explanation",
+    "input_modality": "mixed",
+    "requires_image_output": false,
+    "images": [
+      {
+        "id": "unified_multimodal_transformer",
+        "source": "local",
+        "path": "unified-multimodal-transformer.png",
+        "description": "Diagram of Chameleon-style mixed-modal transformer architecture."
+      }
+    ],
+    "prompt": "Explain the architecture shown in the image to a student who already knows standard language-model Transformers. Focus on what changes when images are represented as tokens."
+  },
+  {
+    "id": "p07_identification_statue",
+    "category": "identification",
+    "input_modality": "mixed",
+    "requires_image_output": true,
+    "images": [
+      {
+        "id": "statue_of_liberty",
+        "source": "url",
+        "url": "https://upload.wikimedia.org/wikipedia/commons/a/a1/Statue_of_Liberty_7.jpg",
+        "filename": "statue_of_liberty.jpg",
+        "description": "Statue of Liberty photograph from Wikimedia Commons."
+      }
+    ],
+    "prompt": "Is the image below the Eiffel Tower? If not, identify the landmark, describe two visual clues, and include one image caption showing what the Eiffel Tower would look like for comparison."
+  },
+  {
+    "id": "p08_comparison_animals",
+    "category": "comparison",
+    "input_modality": "mixed",
+    "requires_image_output": true,
+    "images": [
+      {
+        "id": "cats_on_couch",
+        "source": "url",
+        "url": "http://images.cocodataset.org/val2017/000000039769.jpg",
+        "filename": "cats_on_couch.jpg",
+        "description": "Two cats on a couch from the COCO validation set."
+      },
+      {
+        "id": "parrots",
+        "source": "url",
+        "url": "https://huggingface.co/datasets/Narsil/image_dummy/raw/main/parrots.png",
+        "filename": "parrots.png",
+        "description": "Parrots image from a public Hugging Face sample dataset."
+      }
+    ],
+    "prompt": "Compare the main animals in these two images. Describe how their body shapes, colors, and likely behaviors differ, then include two captions for additional example images that would help a child learn the difference."
+  },
+  {
+    "id": "p09_report_landmark",
+    "category": "report",
+    "input_modality": "mixed",
+    "requires_image_output": true,
+    "images": [
+      {
+        "id": "statue_of_liberty",
+        "source": "url",
+        "url": "https://upload.wikimedia.org/wikipedia/commons/a/a1/Statue_of_Liberty_7.jpg",
+        "filename": "statue_of_liberty.jpg",
+        "description": "Statue of Liberty photograph from Wikimedia Commons."
+      }
+    ],
+    "prompt": "Write a concise report about the landmark in this image: what it is, where it is, what it commemorates, and why it is visually recognizable. Include one caption for a related historical illustration."
+  },
+  {
+    "id": "p10_reasoning_scene",
+    "category": "reasoning",
+    "input_modality": "mixed",
+    "requires_image_output": false,
+    "images": [
+      {
+        "id": "cats_on_couch",
+        "source": "url",
+        "url": "http://images.cocodataset.org/val2017/000000039769.jpg",
+        "filename": "cats_on_couch.jpg",
+        "description": "Two cats on a couch from the COCO validation set."
+      }
+    ],
+    "prompt": "Reason from the visible evidence in the image: what is most likely happening in this scene, what details support that interpretation, and what uncertainties remain?"
+  }
+]
